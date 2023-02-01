@@ -1,6 +1,4 @@
-# Demo Project README
+<h1>This is a my reminder repo<h1>
+<p>This is a simple text line<p>
 
-This is a simple README file
-
-This is more words
 

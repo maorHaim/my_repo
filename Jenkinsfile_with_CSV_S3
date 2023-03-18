@@ -1,0 +1,63 @@
+pipeline {
+    agent {label 'slave1'}
+    stages {
+        stage('Checkout SCM') {
+                steps {
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: 'main']],
+                    userRemoteConfigs : [[
+                        url: 'https://github.com/maorHaim/my_repo.git',
+                        credentialsId: ''
+                        ]]
+                    ])
+            }
+           
+        }
+
+        stage('Clone repo') {
+            steps {
+                sh "git clone https://github.com/maorHaim/my_repo.git"
+            }
+        }
+   
+        stage('Build image') {
+            steps {
+              sh "sudo docker build -t flask_project:1.0 ./my_repo/project"
+            }
+        }
+          stage('Run image') {
+            steps {
+                sh "sudo docker run -d -p 5000:5000 flask_project:1.0"
+            }    
+        }
+         stage('Test'){
+            steps {
+                script {
+                    def result = sh(script: "curl -sSf http://localhost:5000/maor", returnStatus: true)
+                    if (result == 0) {
+                        echo 'Docker image build and run successful.' } else { error 'Docker image build and run failed.'
+                    }
+                }
+            }
+        }
+         stage('Test result'){
+            steps {
+                sh 'echo "user, date, status" > test_results.csv'
+                sh 'echo "$(whoami), $(date +%Y-%m-%d), success" >> test_results.csv'
+                withAWS(region:'us-east-1',credentials:'AKIAX2NRG45PGLH24M4Z') {
+                    sh 'aws s3 cp test_results.csv s3://sqlab-devops-maorh/test_results.csv'
+                }
+            }
+        }
+    }
+ post {
+        always {
+            deleteDir()
+            sh 'sudo docker stop $(sudo docker ps -q --filter ancestor=flask_project:1.0)'
+
+
+        }
+        
+    }
+}
